@@ -1,13 +1,8 @@
 package com.jpa;
 
-/*
-* @author : JPA1238
-* @version : 0.1
-* @version : 0.1-alpha
-*/
-
 public class terrainGenerator {
     public static void main(String[] args) {
-        System.out.println("Hello World!");
+        heightmap belgiumHM = new heightmap(50, 4, 2, 2);
+        // heightmap worldHM = new heightmap(90, -180, 180, 360);
     }
 }
