@@ -2,5 +2,7 @@
 !.gitignore
 
 /src/test
+/data/private/*
+/data/elevationData/earthData/*
 
 /target

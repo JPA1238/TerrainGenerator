@@ -1,40 +1,36 @@
 package com.jpa;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.util.HashSet;
-import java.util.Scanner;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 public class URLGenerator {
-    private static String baseUrl = "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/ASTGTM.003/ASTGTMV003_";
-    private static String extension = ".tif";
+    private static String baseUrl = "ASTGTMV003_";
+    private static String extension = "_dem.tif";
 
     private HashSet<String> possibleLoc = new HashSet<String>();
 
-    public void getPossibleLoc(String path) {       
+    public void getPossibleLoc() {
+        JSONParser parser = new JSONParser();
+        JSONObject json;
         try {
-            File inputURLs = new File(path + "downloadURLs.txt");
-            // System.out.println(inputURLs.getAbsolutePath());
+            json = (JSONObject) parser.parse(new FileReader("data/private/credentials.json"));
 
-            Scanner sc = new Scanner(inputURLs);
-
-            while (sc.hasNextLine()) {
-                String data = sc.nextLine().replaceAll(baseUrl, "").replaceAll(extension, "").split("_")[0];
-
-                possibleLoc.add(data);
+            File folder = new File((String) json.get("path"));
+            for (String file : folder.list()) {
+                file = file.replace(baseUrl, "").replace(extension, "");
+                possibleLoc.add(file);
             }
-
-            sc.close();
-
-        } catch (FileNotFoundException e) {
-            System.out.println("Could not read file in : " + path);
+        } catch (Exception e) {
+            System.out.println("ERROR : Failed to gather credentials");
+            e.printStackTrace();
         }
-
-        // System.out.println(possibleLat);
-        // System.out.println(possibleLon);
     }
 
-    public boolean validLoc(String loc){
+    public boolean validLoc(String loc) {
         if (possibleLoc.contains(loc)) {
             return true;
         } else {
