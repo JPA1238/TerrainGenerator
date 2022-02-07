@@ -3,6 +3,7 @@ package com.jpa;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -12,11 +13,10 @@ import java.util.HashMap;
 // settings stored as strings
 public class model {
     float width, height, resolutionX, resolutionY, baseHeight;
-
     public HashMap<String, String> settings = new HashMap<String, String>();
     heightmap hm;
 
-    byte[] header = new byte[80];
+    int vertexCount = 0;
     int triangleCount = 0;
 
     model(heightmap hm, int width, int height) {
@@ -32,22 +32,71 @@ public class model {
         reloadSettings();
     }
 
-    public void generate(String path) {
-        prepareSTL(path);
-
+    public void generate(String path, String fileType) {
         reloadSettings();
 
-        for (int i = 0; i < hm.getWidth(); i++) {
-            for (int j = 0; j < hm.getHeight(); j++) {
-                generateChunk(hm.getHeightValues(i, j), 0, path); // TODO offset
-            }
+        switch (fileType) {
+            case "STL":
+                prepareSTL(path);
+                for (int i = 0; i < hm.getWidth(); i++) {
+                    for (int j = 0; j < hm.getHeight(); j++) {
+                        generateChunk(hm.getHeightValues(i, j), i, hm.getHeight() - 1 - j, path);
+                    }
+                }
+                updateTriangleCount(path);
+                System.out.println("\nFacecount : " + triangleCount);
+                break;
+            case "OBJ":
+                String name = path.split("/")[path.split("/").length - 1];
+                write("o " + name + "\n", path, false);
+                for (int i = 0; i < hm.getWidth(); i++) {
+                    for (int j = 0; j < hm.getHeight(); j++) {
+                        generateVertices(hm.getHeightValues(i, j), i, j, path); // TODO offset
+                    }
+                }
+                for (int i = 0; i < hm.getWidth(); i++) {
+                    for (int j = 0; j < hm.getHeight(); j++) {
+                        generateFaces(0, path); // TODO offset
+                    }
+                }
+                System.out.println("\nVertexcount : " + vertexCount);
+                System.out.println("Facecount : " + triangleCount);
+            default:
+                System.out.println("ERROR : invalid filetype");
+                break;
         }
-
-        updateTriangleCount(path);
-        System.out.println("\nFacecount : " + triangleCount);
     }
 
-    private void generateChunk(int[][] heightValues, int offset, String path) {
+    private void reloadSettings() {
+        width = Float.parseFloat(settings.get("width"));
+        height = Float.parseFloat(settings.get("height"));
+        resolutionX = Float.parseFloat(settings.get("resolutionX"));
+        resolutionY = Float.parseFloat(settings.get("resolutionY"));
+        baseHeight = Float.parseFloat(settings.get("baseHeight")); // TODO implement
+    }
+
+    /*
+     * STL generation
+     */
+
+    private void prepareSTL(String path) {
+        byte[] header = new byte[80];
+        byte[] name = path.split("/")[path.split("/").length - 1].getBytes();
+
+        if (name.length <= 80) {
+            header = insertByteArray(header, name, 0);
+        } else {
+            System.out.println("ERROR : STL name too big");
+        }
+
+        writeBytes(header, path, false);
+        writeBytes(intToBytes(0), path, true);
+    }
+
+    private void generateChunk(int[][] heightValues, int offsetX, int offsetY, String path) {
+        offsetX *= heightValues.length;
+        offsetY *= heightValues[0].length;
+
         for (int x = 0; x < heightValues.length - 1; x++) {
             byte[] mesh = new byte[(heightValues[x].length - 1) * 2 * 50];
             for (int y = 0; y < heightValues[x].length - 1; y++) {
@@ -56,10 +105,10 @@ public class model {
                  * *-* LB - RB
                  */
 
-                vector LB = new vector(x, y, heightValues[x][y]); // LB
-                vector RB = new vector(x + 1, y, heightValues[x + 1][y]); // RB
-                vector LT = new vector(x, y + 1, heightValues[x][y + 1]); // LT
-                vector RT = new vector(x + 1, y + 1, heightValues[x + 1][y + 1]); // RT
+                vector LB = new vector(x     + offsetX, y     + offsetY, heightValues[heightValues[x].length -1 - (y    )][x    ]); // LB
+                vector RB = new vector(x + 1 + offsetX, y     + offsetY, heightValues[heightValues[x].length -1 - (y    )][x + 1]); // RB
+                vector LT = new vector(x     + offsetX, y + 1 + offsetY, heightValues[heightValues[x].length -1 - (y + 1)][x    ]); // LT
+                vector RT = new vector(x + 1 + offsetX, y + 1 + offsetY, heightValues[heightValues[x].length -1 - (y + 1)][x + 1]); // RT
 
                 /**
                  * System.out.println("\n");
@@ -81,28 +130,7 @@ public class model {
         }
     }
 
-    private void reloadSettings() {
-        width = Float.parseFloat(settings.get("width"));
-        height = Float.parseFloat(settings.get("height"));
-        resolutionX = Float.parseFloat(settings.get("resolutionX"));
-        resolutionY = Float.parseFloat(settings.get("resolutionY"));
-        baseHeight = Float.parseFloat(settings.get("baseHeight"));
-    }
-
-    public void prepareSTL(String path) {
-        byte[] name = path.split("/")[path.split("/").length - 1].getBytes();
-
-        if (name.length <= 80) {
-            header = insertByteArray(header, name, 0);
-        } else {
-            System.out.println("ERROR : STL name too big");
-        }
-
-        writeBytes(header, path, false);
-        writeBytes(intToBytes(0), path, true);
-    }
-
-    public void updateTriangleCount(String path) {
+    private void updateTriangleCount(String path) {
         RandomAccessFile raf = null;
         try {
             raf = new RandomAccessFile(path, "rw");
@@ -128,6 +156,30 @@ public class model {
         }
     }
 
+    /*
+     * OBJ generation
+     */
+
+    private void generateVertices(int[][] heightValues, int offsetX, int offsetY, String path) {
+        for (int x = 0; x < heightValues.length; x++) {
+            String vertices = "";
+            for (int y = 0; y < heightValues[x].length; y++) {
+                vector v = new vector(x, y, heightValues[x][y]);
+                vertices += v.toString() + "\n";
+                vertexCount += 1;
+            }
+            write(vertices, path, true);
+        }
+    }
+
+    private void generateFaces(int offset, String path) {
+        // TODO
+    }
+
+    /*
+     * Helper functions
+     */
+
     public void writeBytes(byte[] bytes, String path, boolean append) {
         try {
             File file = new File(path);
@@ -139,6 +191,19 @@ public class model {
         } catch (IOException e) {
             System.out.println("ERROR : Failed to write file");
             e.printStackTrace();
+        }
+    }
+
+    private void write(String str, String path, boolean append) {
+        try {
+            File f = new File(path);
+            FileWriter fw = new FileWriter(f, append);
+
+            fw.write(str);
+
+            fw.close();
+        } catch (IOException e) {
+            System.out.println("ERROR : Couldn't read file " + path);
         }
     }
 

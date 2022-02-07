@@ -1,6 +1,5 @@
 package com.jpa;
 
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileReader;
@@ -83,17 +82,30 @@ public class heightmap {
     }
 
     public int[][] getHeightValues(int x, int y) {
+        int errors = 0;
+        System.out.println("Getting height values for " + map[x][y]);
         int[][] height = null;
 
         BufferedImage image = getTIF(map[x][y]);
-        height = new int[(int) Math.floor(image.getWidth() / resolution)][(int) Math.floor(image.getHeight() / resolution)];
+        height = new int[(int) Math.floor(image.getWidth() / resolution)][(int) Math
+                .floor(image.getHeight() / resolution)];
         for (int i = 0; i < image.getWidth() / resolution; i++) {
             for (int j = 0; j < image.getHeight() / resolution; j++) {
-                Color c = new Color(image.getRGB(i * resolution, j * resolution));
-                height[i][j] = c.getRed();
+                try {
+                    int h = image.getRGB(i * resolution, j * resolution) & 0xff;
+                    height[i][j] = h;
+                } catch (Exception e){
+                    // System.out.println("ERROR : Couldn't grab value");
+                    height[i][j] = 0;
+                    errors++;
+                }
             }
         }
-        System.out.println("Number of height values for image " + x + "-" + y + " : " + height.length * height[0].length);
+        System.out.println("Number of height values : " + height.length * height[0].length);
+
+        if (errors > 0) {
+            System.out.println("Number of errors : " + errors);
+        }
 
         return height;
     }
@@ -147,7 +159,7 @@ public class heightmap {
         return dim.get("width");
     }
 
-    public int getHeight(){
+    public int getHeight() {
         return dim.get("height");
     }
 }

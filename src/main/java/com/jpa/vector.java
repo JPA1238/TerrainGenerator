@@ -40,6 +40,10 @@ public class vector {
         return res;
     }
 
+    public String toString() {
+        return "v " + this.x + " " + this.y + " " + this.z;
+    }
+
     private byte[] insertByteArray(byte[] res, byte[] a, int location) {
         for (int i = 0; i < a.length; i++) {
             res[location + i] = a[i];
