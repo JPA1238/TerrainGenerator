@@ -1,4 +1,9 @@
 @echo off
+
+mkdir "data\\private"
+mkdir "data\\STLs"
+mkdir "data\\OBJs"
+
 if not exist data/private/credentials.json (
     set /p username="Earthdata username : "
     set /p password="Password : "
