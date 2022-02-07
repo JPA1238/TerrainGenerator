@@ -15,8 +15,7 @@ import org.json.simple.parser.JSONParser;
 public class heightmap {
     private HashMap<String, Integer> loc = new HashMap<String, Integer>();
     private HashMap<String, Integer> dim = new HashMap<String, Integer>();
-    private int resolution = 5; // TODO memory optimization
-    private int count = 0;
+    private int resolution = 10; // 100km * (1 / 3601 * resolution) = m / dp
 
     private String[][] map;
 
@@ -25,7 +24,7 @@ public class heightmap {
 
     public URLGenerator URLGen = new URLGenerator();
 
-    heightmap(Integer lat, Integer lon, Integer width, Integer height) {
+    heightmap(int lat, int lon, int width, int height) {
         this.loc.put("lat", lat);
         this.loc.put("lon", lon);
         this.dim.put("width", width);
@@ -39,9 +38,26 @@ public class heightmap {
         getURLs();
     }
 
+    heightmap(int lat, int lon, int width, int height, int resolution) {
+        this.loc.put("lat", lat);
+        this.loc.put("lon", lon);
+        this.dim.put("width", width);
+        this.dim.put("height", height);
+
+        this.resolution = resolution;
+
+        URLGen.getPossibleLoc();
+
+        map = new String[width][height];
+
+        System.out.println("Getting URLs\n");
+        getURLs();
+    }
+
     private void getURLs() {
-        Integer lat = loc.get("lat");
-        Integer lon = loc.get("lon");
+        int lat = loc.get("lat");
+        int lon = loc.get("lon");
+        int count = 0;
 
         String graph = "";
 
@@ -99,10 +115,11 @@ public class heightmap {
             System.out.println("ERROR : Couldn't read image " + path);
             e.printStackTrace();
         }
+
         return image;
     }
 
-    private String locLength(Integer loc, int len, boolean type) {
+    private String locLength(int loc, int len, boolean type) {
         String res = "";
         // type 1 => lat => N | S
         // type 0 => lon => E | W

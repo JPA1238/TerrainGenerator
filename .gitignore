@@ -4,5 +4,6 @@
 /src/test
 /data/private/*
 /data/elevationData/earthData/*
+/data/STLs/*
 
 /target

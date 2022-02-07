@@ -1,7 +1,5 @@
 package com.jpa;
 
-import java.util.Arrays;
-
 public class triangle {
     vector[] face = new vector[3];
     vector normal = null;
