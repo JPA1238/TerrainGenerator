@@ -40,7 +40,7 @@ public class model {
                 prepareSTL(path);
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
-                        generateChunk(hm.getHeightValues(i, j), i, hm.getHeight() - 1 - j, path);
+                        generateChunk(hm.getHeightValues(i, j), i, j, path);
                     }
                 }
                 updateTriangleCount(path);
@@ -49,14 +49,17 @@ public class model {
             case "OBJ":
                 String name = path.split("/")[path.split("/").length - 1];
                 write("o " + name + "\n", path, false);
+
+                int[][][] individualVertexCount = new int[hm.getWidth()][hm.getHeight()][2];
+
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
-                        generateVertices(hm.getHeightValues(i, j), i, j, path); // TODO offset
+                        individualVertexCount[i][j] = generateVertices(hm.getHeightValues(i, j), i, j, path); // TODO offset
                     }
                 }
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
-                        generateFaces(0, path); // TODO offset
+                        generateFaces(individualVertexCount[i][j][0], individualVertexCount[i][j][1], 0, path); // TODO offset
                     }
                 }
                 System.out.println("\nVertexcount : " + vertexCount);
@@ -105,10 +108,10 @@ public class model {
                  * *-* LB - RB
                  */
 
-                vector LB = new vector(x     + offsetX, y     + offsetY, heightValues[heightValues[x].length -1 - (y    )][x    ]); // LB
-                vector RB = new vector(x + 1 + offsetX, y     + offsetY, heightValues[heightValues[x].length -1 - (y    )][x + 1]); // RB
-                vector LT = new vector(x     + offsetX, y + 1 + offsetY, heightValues[heightValues[x].length -1 - (y + 1)][x    ]); // LT
-                vector RT = new vector(x + 1 + offsetX, y + 1 + offsetY, heightValues[heightValues[x].length -1 - (y + 1)][x + 1]); // RT
+                vector LB = new vector(x +     offsetX, y     + offsetY, heightValues[heightValues[x].length - 1 - (y    )][x    ]); // LB
+                vector RB = new vector(x + 1 + offsetX, y     + offsetY, heightValues[heightValues[x].length - 1 - (y    )][x + 1]); // RB
+                vector LT = new vector(x +     offsetX, y + 1 + offsetY, heightValues[heightValues[x].length - 1 - (y + 1)][x    ]); // LT
+                vector RT = new vector(x + 1 + offsetX, y + 1 + offsetY, heightValues[heightValues[x].length - 1 - (y + 1)][x + 1]); // RT
 
                 /**
                  * System.out.println("\n");
@@ -160,20 +163,37 @@ public class model {
      * OBJ generation
      */
 
-    private void generateVertices(int[][] heightValues, int offsetX, int offsetY, String path) {
+    private int[] generateVertices(int[][] heightValues, int offsetX, int offsetY, String path) {
         for (int x = 0; x < heightValues.length; x++) {
             String vertices = "";
             for (int y = 0; y < heightValues[x].length; y++) {
                 vector v = new vector(x, y, heightValues[x][y]);
                 vertices += v.toString() + "\n";
-                vertexCount += 1;
             }
             write(vertices, path, true);
         }
+        int[] vc = {heightValues.length, heightValues[0].length};
+        return vc;
     }
 
-    private void generateFaces(int offset, String path) {
-        // TODO
+    private void generateFaces(int vcX, int vcY, int offset, String path) {
+        for (int x = 1; x < vcX; x++) {
+            String faces = "";
+            for (int y = 1; y < vcY; y++) {
+
+                /**
+                 *  (y - 1) * vcX + x           (y - 1) * vcX + x + 1
+                 * 
+                 *  y * vcC + c                 y * vcX + x + 1
+                 */
+
+                faces += "f " + ((y - 1) * vcX + x + 1) + " " + (y * vcX + x) + " " + ((y - 1) * vcX + x) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1) + " " + (y * vcX + x) + " " + (y * vcX + x + 1) + "\n";
+
+                triangleCount += 2;
+            }
+            write(faces, path, true);
+        }
     }
 
     /*

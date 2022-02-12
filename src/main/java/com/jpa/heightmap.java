@@ -92,7 +92,7 @@ public class heightmap {
         for (int i = 0; i < image.getWidth() / resolution; i++) {
             for (int j = 0; j < image.getHeight() / resolution; j++) {
                 try {
-                    int h = image.getRGB(i * resolution, j * resolution) & 0xff;
+                    int h = image.getRGB(image.getWidth() - 1 - i * resolution, j * resolution) & 0xff;
                     height[i][j] = h;
                 } catch (Exception e){
                     // System.out.println("ERROR : Couldn't grab value");
