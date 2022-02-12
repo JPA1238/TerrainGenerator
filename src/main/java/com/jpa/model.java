@@ -54,16 +54,19 @@ public class model {
 
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
-                        individualVertexCount[i][j] = generateVertices(hm.getHeightValues(i, j), i, j, path); // TODO offset
+                        individualVertexCount[i][j] = generateVertices(hm.getHeightValues(i, j), i, j, path);
                     }
                 }
+                int offset = 0;
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
-                        generateFaces(individualVertexCount[i][j][0], individualVertexCount[i][j][1], 0, path); // TODO offset
+                        generateFaces(individualVertexCount[i][j][0], individualVertexCount[i][j][1], offset, path);
+                        offset += individualVertexCount[i][j][0] * individualVertexCount[i][j][1];
                     }
                 }
                 System.out.println("\nVertexcount : " + vertexCount);
                 System.out.println("Facecount : " + triangleCount);
+                break;
             default:
                 System.out.println("ERROR : invalid filetype");
                 break;
@@ -164,11 +167,15 @@ public class model {
      */
 
     private int[] generateVertices(int[][] heightValues, int offsetX, int offsetY, String path) {
+        offsetX *= heightValues.length;
+        offsetY *= heightValues[0].length;
+
         for (int x = 0; x < heightValues.length; x++) {
             String vertices = "";
             for (int y = 0; y < heightValues[x].length; y++) {
-                vector v = new vector(x, y, heightValues[x][y]);
+                vector v = new vector(x + offsetX, y + offsetY, heightValues[heightValues[x].length - 1 - (y)][x]);
                 vertices += v.toString() + "\n";
+                vertexCount += 1;
             }
             write(vertices, path, true);
         }
@@ -187,8 +194,8 @@ public class model {
                  *  y * vcC + c                 y * vcX + x + 1
                  */
 
-                faces += "f " + ((y - 1) * vcX + x + 1) + " " + (y * vcX + x) + " " + ((y - 1) * vcX + x) + "\n";
-                faces += "f " + ((y - 1) * vcX + x + 1) + " " + (y * vcX + x) + " " + (y * vcX + x + 1) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + ((y - 1) * vcX + x     + offset) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + (y       * vcX + x + 1 + offset) + "\n";
 
                 triangleCount += 2;
             }

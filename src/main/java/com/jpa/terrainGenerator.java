@@ -6,7 +6,6 @@ public class terrainGenerator {
 
         /**
          * Individual tile testing
-         * TODO OBJ
          */
         // heightmap belgiumHM = new heightmap(50, 4, 1, 1, 1);
 
@@ -29,6 +28,7 @@ public class terrainGenerator {
         heightmap nileHM = new heightmap(31, 29, 4, 6, 15);
 
         model nile3D = new model(nileHM, 20, 20);
-        nile3D.generate("data/STLs/nileFlipped.stl", "STL");
+        // nile3D.generate("data/STLs/nileFlipped.stl", "STL");
+        nile3D.generate("data/OBJs/nile.obj", "OBJ");
     }
 }
