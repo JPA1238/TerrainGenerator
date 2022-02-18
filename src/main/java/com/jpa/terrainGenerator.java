@@ -25,10 +25,22 @@ public class terrainGenerator {
         /**
          * Test for large surfaces and errors
          */
-        heightmap nileHM = new heightmap(31, 29, 4, 6, 15);
+        heightmap nileHM = new heightmap(31, 29, 10, 20, 50);
 
         model nile3D = new model(nileHM, 20, 20);
-        // nile3D.generate("data/STLs/nileFlipped.stl", "STL");
+        nile3D.settings.put("smoothing", "true");
         nile3D.generate("data/OBJs/nile.obj", "OBJ");
+
+        heightmap nileHMFinerRes = new heightmap(31, 29, 10, 20, 45);
+
+        model nile3DFinerRes = new model(nileHMFinerRes, 20, 20);
+        nile3DFinerRes.settings.put("smoothing", "true");
+        nile3DFinerRes.generate("data/OBJs/nileFinerRes.obj", "OBJ");
+
+        heightmap nileHMEvenFinerRes = new heightmap(31, 29, 8, 15, 25);
+
+        model nile3DEvenFinerRes = new model(nileHMEvenFinerRes, 20, 20);
+        nile3DEvenFinerRes.settings.put("smoothing", "true");
+        nile3DEvenFinerRes.generate("data/OBJs/nileEvenFinerRes.obj", "OBJ");
     }
 }

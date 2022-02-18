@@ -1,5 +1,7 @@
 package com.jpa;
 
+import java.awt.Color;
+import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileReader;
@@ -81,20 +83,20 @@ public class heightmap {
         System.out.println("number of images needed : " + count);
     }
 
-    public int[][] getHeightValues(int x, int y) {
+    public float[][] getHeightValues(int x, int y) {
         int errors = 0;
         System.out.println("Getting height values for " + map[x][y]);
-        int[][] height = null;
+        float[][] height = null;
 
         BufferedImage image = getTIF(map[x][y]);
-        height = new int[(int) Math.floor(image.getWidth() / resolution)][(int) Math
+        height = new float[(int) Math.floor(image.getWidth() / resolution)][(int) Math
                 .floor(image.getHeight() / resolution)];
         for (int i = 0; i < image.getWidth() / resolution; i++) {
             for (int j = 0; j < image.getHeight() / resolution; j++) {
                 try {
                     int h = image.getRGB(image.getWidth() - 1 - i * resolution, j * resolution) & 0xff;
                     height[i][j] = h;
-                } catch (Exception e){
+                } catch (Exception e) {
                     // System.out.println("ERROR : Couldn't grab value");
                     height[i][j] = 0;
                     errors++;
@@ -111,6 +113,7 @@ public class heightmap {
     }
 
     private BufferedImage getTIF(String path) {
+        // TODO optimize to only get credentials once
         JSONParser parser = new JSONParser();
         JSONObject json = null;
         try {
@@ -120,15 +123,22 @@ public class heightmap {
             e.printStackTrace();
         }
 
-        BufferedImage image = null;
-        try {
-            return image = ImageIO.read(new File(json.get("path") + path));
-        } catch (IOException e) {
-            System.out.println("ERROR : Couldn't read image " + path);
-            e.printStackTrace();
+        if (path != null) {
+            BufferedImage image = null;
+            try {
+                return image = ImageIO.read(new File(json.get("path") + path));
+            } catch (IOException e) {
+                System.out.println("ERROR : Couldn't read image " + path);
+                e.printStackTrace();
+            }
+            return image;
+        } else {
+            BufferedImage image = new BufferedImage(3601, 3601, BufferedImage.TYPE_BYTE_GRAY);
+            Graphics gc = image.getGraphics();
+            gc.setColor(Color.black);
+            gc.fillRect(0, 0, 3601, 3601);
+            return image;
         }
-
-        return image;
     }
 
     private String locLength(int loc, int len, boolean type) {

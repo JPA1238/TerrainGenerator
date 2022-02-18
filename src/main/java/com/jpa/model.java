@@ -13,6 +13,7 @@ import java.util.HashMap;
 // settings stored as strings
 public class model {
     float width, height, resolutionX, resolutionY, baseHeight;
+    boolean smoothing;
     public HashMap<String, String> settings = new HashMap<String, String>();
     heightmap hm;
 
@@ -24,6 +25,7 @@ public class model {
         this.settings.put("height", String.valueOf(height));
         this.settings.put("resolutionX", String.valueOf(Math.floor(width / hm.getWidth())));
         this.settings.put("resolutionY", String.valueOf(Math.floor(height / hm.getHeight())));
+        this.settings.put("smoothing", "false");
 
         this.settings.put("baseHeight", "2");
 
@@ -40,13 +42,38 @@ public class model {
                 prepareSTL(path);
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
-                        generateChunk(hm.getHeightValues(i, j), i, j, path);
+                        if (smoothing) {
+                            float[][] heightValues = hm.getHeightValues(i, j);
+                            float[][] newHeightValues = heightValues;
+
+                            for (int x = 1; x < heightValues.length - 1; x++) {
+                                for (int y = 1; y < heightValues[x].length - 1; y++) {
+                                    float[][] neighbours = {
+                                            { heightValues[x - 1][y - 1], heightValues[x    ][y - 1], heightValues[x + 1][y - 1] },
+                                            { heightValues[x - 1][y    ], heightValues[x    ][y    ], heightValues[x + 1][y    ] },
+                                            { heightValues[x - 1][y + 1], heightValues[x    ][y + 1], heightValues[x + 1][y + 1] }
+                                    };
+                                    float[][] weights = {
+                                            { 0.5f, 1.0f, 0.5f },
+                                            { 1.0f, 2.0f, 1.0f },
+                                            { 0.5f, 1.0f, 0.5f }
+                                    };
+                                    newHeightValues[x][y] = flatten(neighbours, weights);
+                                }
+                            }
+                            heightValues = newHeightValues;
+
+                            generateChunk(heightValues, i, j, path);
+                        } else {
+                            generateChunk(hm.getHeightValues(i, j), i, j, path);
+                        }
                     }
                 }
                 updateTriangleCount(path);
                 System.out.println("\nFacecount : " + triangleCount);
                 break;
             case "OBJ":
+                // TODO fix naming
                 String name = path.split("/")[path.split("/").length - 1];
                 write("o " + name + "\n", path, false);
 
@@ -54,9 +81,34 @@ public class model {
 
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
-                        individualVertexCount[i][j] = generateVertices(hm.getHeightValues(i, j), i, j, path);
+                        if (smoothing) {
+                            float[][] heightValues = hm.getHeightValues(i, j);
+                            float[][] newHeightValues = heightValues;
+
+                            for (int x = 1; x < heightValues.length - 1; x++) {
+                                for (int y = 1; y < heightValues[x].length - 1; y++) {
+                                    float[][] neighbours = {
+                                            { heightValues[x - 1][y - 1], heightValues[x    ][y - 1], heightValues[x + 1][y - 1] },
+                                            { heightValues[x - 1][y    ], heightValues[x    ][y    ], heightValues[x + 1][y    ] },
+                                            { heightValues[x - 1][y + 1], heightValues[x    ][y + 1], heightValues[x + 1][y + 1] }
+                                    };
+                                    float[][] weights = {
+                                            { 0.5f, 1.0f, 0.5f },
+                                            { 1.0f, 2.0f, 1.0f },
+                                            { 0.5f, 1.0f, 0.5f }
+                                    };
+                                    newHeightValues[x][y] = flatten(neighbours, weights);
+                                }
+                            }
+                            heightValues = newHeightValues;
+
+                            individualVertexCount[i][j] = generateVertices(heightValues, i, j, path);
+                        } else {
+                            individualVertexCount[i][j] = generateVertices(hm.getHeightValues(i, j), i, j, path);
+                        }
                     }
                 }
+
                 int offset = 0;
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
@@ -64,6 +116,7 @@ public class model {
                         offset += individualVertexCount[i][j][0] * individualVertexCount[i][j][1];
                     }
                 }
+
                 System.out.println("\nVertexcount : " + vertexCount);
                 System.out.println("Facecount : " + triangleCount);
                 break;
@@ -79,6 +132,7 @@ public class model {
         resolutionX = Float.parseFloat(settings.get("resolutionX"));
         resolutionY = Float.parseFloat(settings.get("resolutionY"));
         baseHeight = Float.parseFloat(settings.get("baseHeight")); // TODO implement
+        smoothing = Boolean.parseBoolean(settings.get("smoothing"));
     }
 
     /*
@@ -99,7 +153,7 @@ public class model {
         writeBytes(intToBytes(0), path, true);
     }
 
-    private void generateChunk(int[][] heightValues, int offsetX, int offsetY, String path) {
+    private void generateChunk(float[][] heightValues, int offsetX, int offsetY, String path) {
         offsetX *= heightValues.length;
         offsetY *= heightValues[0].length;
 
@@ -111,9 +165,9 @@ public class model {
                  * *-* LB - RB
                  */
 
-                vector LB = new vector(x +     offsetX, y     + offsetY, heightValues[heightValues[x].length - 1 - (y    )][x    ]); // LB
+                vector LB = new vector(x     + offsetX, y     + offsetY, heightValues[heightValues[x].length - 1 - (y    )][x    ]); // LB
                 vector RB = new vector(x + 1 + offsetX, y     + offsetY, heightValues[heightValues[x].length - 1 - (y    )][x + 1]); // RB
-                vector LT = new vector(x +     offsetX, y + 1 + offsetY, heightValues[heightValues[x].length - 1 - (y + 1)][x    ]); // LT
+                vector LT = new vector(x     + offsetX, y + 1 + offsetY, heightValues[heightValues[x].length - 1 - (y + 1)][x    ]); // LT
                 vector RT = new vector(x + 1 + offsetX, y + 1 + offsetY, heightValues[heightValues[x].length - 1 - (y + 1)][x + 1]); // RT
 
                 /**
@@ -166,7 +220,7 @@ public class model {
      * OBJ generation
      */
 
-    private int[] generateVertices(int[][] heightValues, int offsetX, int offsetY, String path) {
+    private int[] generateVertices(float[][] heightValues, int offsetX, int offsetY, String path) {
         offsetX *= heightValues.length;
         offsetY *= heightValues[0].length;
 
@@ -179,7 +233,7 @@ public class model {
             }
             write(vertices, path, true);
         }
-        int[] vc = {heightValues.length, heightValues[0].length};
+        int[] vc = { heightValues.length, heightValues[0].length };
         return vc;
     }
 
@@ -189,13 +243,15 @@ public class model {
             for (int y = 1; y < vcY; y++) {
 
                 /**
-                 *  (y - 1) * vcX + x           (y - 1) * vcX + x + 1
+                 * (y - 1) * vcX + x (y - 1) * vcX + x + 1
                  * 
-                 *  y * vcC + c                 y * vcX + x + 1
+                 * y * vcC + c y * vcX + x + 1
                  */
 
-                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + ((y - 1) * vcX + x     + offset) + "\n";
-                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + (y       * vcX + x + 1 + offset) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " "
+                        + ((y - 1) * vcX + x + offset) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " "
+                        + (y * vcX + x + 1 + offset) + "\n";
 
                 triangleCount += 2;
             }
@@ -204,10 +260,26 @@ public class model {
     }
 
     /*
+     * Algoritms
+     */
+
+    private float flatten(float[][] tiles, float[][] weight) {
+        float avg = 0;
+        float totalWeight = 0;
+        for (int x = 0; x < tiles.length; x++) {
+            for (int y = 0; y < tiles[x].length; y++) {
+                avg += tiles[x][y] * weight[x][y];
+                totalWeight += weight[x][y];
+            }
+        }
+        return avg / (totalWeight);
+    }
+
+    /*
      * Helper functions
      */
 
-    public void writeBytes(byte[] bytes, String path, boolean append) {
+    private void writeBytes(byte[] bytes, String path, boolean append) {
         try {
             File file = new File(path);
             FileOutputStream fos = new FileOutputStream(file, append);
