@@ -12,13 +12,22 @@ import java.util.HashMap;
 // units in cm
 // settings stored as strings
 public class model {
-    float width, height, resolutionX, resolutionY, baseHeight;
-    boolean smoothing;
+    /*
+     *  Standard settigns
+     */
+    private float width, height, resolutionX, resolutionY, baseHeight;
+    private boolean smoothing;
     public HashMap<String, String> settings = new HashMap<String, String>();
-    heightmap hm;
 
-    int vertexCount = 0;
-    int triangleCount = 0;
+    /*
+     *  member variables
+     */
+    private heightmap hm;
+
+    private int vertexCount = 0;
+    private int triangleCount = 0;
+
+    private static int smoothingResolution = 7; // <-- r+1+r | ex: 5 --> 2+1+2 --> 2 neighbours on each side
 
     model(heightmap hm, int width, int height) {
         this.settings.put("width", String.valueOf(width));
@@ -46,18 +55,24 @@ public class model {
                             float[][] heightValues = hm.getHeightValues(i, j);
                             float[][] newHeightValues = heightValues;
 
-                            for (int x = 1; x < heightValues.length - 1; x++) {
-                                for (int y = 1; y < heightValues[x].length - 1; y++) {
-                                    float[][] neighbours = {
-                                            { heightValues[x - 1][y - 1], heightValues[x    ][y - 1], heightValues[x + 1][y - 1] },
-                                            { heightValues[x - 1][y    ], heightValues[x    ][y    ], heightValues[x + 1][y    ] },
-                                            { heightValues[x - 1][y + 1], heightValues[x    ][y + 1], heightValues[x + 1][y + 1] }
-                                    };
-                                    float[][] weights = {
-                                            { 0.5f, 1.0f, 0.5f },
-                                            { 1.0f, 2.0f, 1.0f },
-                                            { 0.5f, 1.0f, 0.5f }
-                                    };
+                            int radius = (smoothingResolution - 1) / 2;
+
+                            for (int x = radius; x < heightValues.length - radius; x++) {
+                                for (int y = radius; y < heightValues[x].length - radius; y++) {
+                                    float[][] neighbours = new float[smoothingResolution][smoothingResolution];
+                                    for (int sx = - radius; sx <= radius; sx++) {
+                                        for (int sy = - radius; sy <= radius; sy++) {
+                                            neighbours[sx + radius ][sy + radius] = heightValues[x+sx][y+sy];
+                                        }
+                                    }
+                                    
+                                    float[][] weights = new float[smoothingResolution][smoothingResolution];
+                                    for (int sx = 0; sx < smoothingResolution; sx++) {
+                                        for (int sy = 0; sy < smoothingResolution; sy++) {
+                                            weights[sx][sy] = (Math.abs(Math.abs(sx - radius) - radius) + radius) * (Math.abs(Math.abs(sy - radius) - radius) + radius);
+                                        }
+                                    }
+
                                     newHeightValues[x][y] = flatten(neighbours, weights);
                                 }
                             }
@@ -85,18 +100,24 @@ public class model {
                             float[][] heightValues = hm.getHeightValues(i, j);
                             float[][] newHeightValues = heightValues;
 
-                            for (int x = 1; x < heightValues.length - 1; x++) {
-                                for (int y = 1; y < heightValues[x].length - 1; y++) {
-                                    float[][] neighbours = {
-                                            { heightValues[x - 1][y - 1], heightValues[x    ][y - 1], heightValues[x + 1][y - 1] },
-                                            { heightValues[x - 1][y    ], heightValues[x    ][y    ], heightValues[x + 1][y    ] },
-                                            { heightValues[x - 1][y + 1], heightValues[x    ][y + 1], heightValues[x + 1][y + 1] }
-                                    };
-                                    float[][] weights = {
-                                            { 0.5f, 1.0f, 0.5f },
-                                            { 1.0f, 2.0f, 1.0f },
-                                            { 0.5f, 1.0f, 0.5f }
-                                    };
+                            int radius = (smoothingResolution - 1) / 2;
+
+                            for (int x = radius; x < heightValues.length - radius; x++) {
+                                for (int y = radius; y < heightValues[x].length - radius; y++) {
+                                    float[][] neighbours = new float[smoothingResolution][smoothingResolution];
+                                    for (int sx = -radius; sx <= radius; sx++) {
+                                        for (int sy = -radius; sy <= radius; sy++) {
+                                            neighbours[sx + radius][sy + radius] = heightValues[x + sx][y + sy];
+                                        }
+                                    }
+
+                                    float[][] weights = new float[smoothingResolution][smoothingResolution];
+                                    for (int sx = 0; sx < smoothingResolution; sx++) {
+                                        for (int sy = 0; sy < smoothingResolution; sy++) {
+                                            weights[sx][sy] = (Math.abs(Math.abs(sx - radius) - radius) + radius) * (Math.abs(Math.abs(sy - radius) - radius) + radius);
+                                        }
+                                    }
+
                                     newHeightValues[x][y] = flatten(neighbours, weights);
                                 }
                             }
@@ -248,10 +269,8 @@ public class model {
                  * y * vcC + c y * vcX + x + 1
                  */
 
-                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " "
-                        + ((y - 1) * vcX + x + offset) + "\n";
-                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " "
-                        + (y * vcX + x + 1 + offset) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + ((y - 1) * vcX + x + offset) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + (y * vcX + x + 1 + offset) + "\n";
 
                 triangleCount += 2;
             }
