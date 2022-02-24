@@ -7,20 +7,21 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 
 // units in cm
 // settings stored as strings
 public class model {
     /*
-     *  Standard settigns
+     * Standard settigns
      */
     private float width, height, resolutionX, resolutionY, baseHeight;
     private boolean smoothing;
     public HashMap<String, String> settings = new HashMap<String, String>();
 
     /*
-     *  member variables
+     * member variables
      */
     private heightmap hm;
 
@@ -60,16 +61,17 @@ public class model {
                             for (int x = radius; x < heightValues.length - radius; x++) {
                                 for (int y = radius; y < heightValues[x].length - radius; y++) {
                                     float[][] neighbours = new float[smoothingResolution][smoothingResolution];
-                                    for (int sx = - radius; sx <= radius; sx++) {
-                                        for (int sy = - radius; sy <= radius; sy++) {
-                                            neighbours[sx + radius ][sy + radius] = heightValues[x+sx][y+sy];
+                                    for (int sx = -radius; sx <= radius; sx++) {
+                                        for (int sy = -radius; sy <= radius; sy++) {
+                                            neighbours[sx + radius][sy + radius] = heightValues[x + sx][y + sy];
                                         }
                                     }
-                                    
+
                                     float[][] weights = new float[smoothingResolution][smoothingResolution];
                                     for (int sx = 0; sx < smoothingResolution; sx++) {
                                         for (int sy = 0; sy < smoothingResolution; sy++) {
-                                            weights[sx][sy] = (Math.abs(Math.abs(sx - radius) - radius) + radius) * (Math.abs(Math.abs(sy - radius) - radius) + radius);
+                                            weights[sx][sy] = (Math.abs(Math.abs(sx - radius) - radius) + radius)
+                                                    * (Math.abs(Math.abs(sy - radius) - radius) + radius);
                                         }
                                     }
 
@@ -114,7 +116,8 @@ public class model {
                                     float[][] weights = new float[smoothingResolution][smoothingResolution];
                                     for (int sx = 0; sx < smoothingResolution; sx++) {
                                         for (int sy = 0; sy < smoothingResolution; sy++) {
-                                            weights[sx][sy] = (Math.abs(Math.abs(sx - radius) - radius) + radius) * (Math.abs(Math.abs(sy - radius) - radius) + radius);
+                                            weights[sx][sy] = (Math.abs(Math.abs(sx - radius) - radius) + radius)
+                                                    * (Math.abs(Math.abs(sy - radius) - radius) + radius);
                                         }
                                     }
 
@@ -186,10 +189,13 @@ public class model {
                  * *-* LB - RB
                  */
 
-                vector LB = new vector(x     + offsetX, y     + offsetY, heightValues[heightValues[x].length - 1 - (y    )][x    ]); // LB
-                vector RB = new vector(x + 1 + offsetX, y     + offsetY, heightValues[heightValues[x].length - 1 - (y    )][x + 1]); // RB
-                vector LT = new vector(x     + offsetX, y + 1 + offsetY, heightValues[heightValues[x].length - 1 - (y + 1)][x    ]); // LT
-                vector RT = new vector(x + 1 + offsetX, y + 1 + offsetY, heightValues[heightValues[x].length - 1 - (y + 1)][x + 1]); // RT
+                vector LB = new vector(x + offsetX, y + offsetY, heightValues[heightValues[x].length - 1 - (y)][x]); // LB
+                vector RB = new vector(x + 1 + offsetX, y + offsetY,
+                        heightValues[heightValues[x].length - 1 - (y)][x + 1]); // RB
+                vector LT = new vector(x + offsetX, y + 1 + offsetY,
+                        heightValues[heightValues[x].length - 1 - (y + 1)][x]); // LT
+                vector RT = new vector(x + 1 + offsetX, y + 1 + offsetY,
+                        heightValues[heightValues[x].length - 1 - (y + 1)][x + 1]); // RT
 
                 /**
                  * System.out.println("\n");
@@ -212,27 +218,19 @@ public class model {
     }
 
     private void updateTriangleCount(String path) {
-        RandomAccessFile raf = null;
         try {
-            raf = new RandomAccessFile(path, "rw");
+            RandomAccessFile raf = new RandomAccessFile(path, "rw");
+            byte[] trCB = intToBytes(triangleCount);
+            for (int i = 0; i < 4; i++) {
+                raf.seek(80 + i);
+                raf.write(trCB[trCB.length - i - 1]);
+            }
+            raf.close();
         } catch (FileNotFoundException e) {
             System.out.println("ERROR : Couldn't find file " + path);
             e.printStackTrace();
-        }
-        byte[] trCB = intToBytes(triangleCount);
-        for (int i = 80; i < 4; i++) {
-            try {
-                raf.seek(80 + i);
-                raf.write(trCB[trCB.length - i - 1]);
-            } catch (IOException e) {
-                System.out.println("ERROR : Couldn't write to file " + path);
-                e.printStackTrace();
-            }
-        }
-        try {
-            raf.close();
         } catch (IOException e) {
-            System.out.println("ERROR : Coudln't close file " + path);
+            System.out.println("ERROR : IO exception with " + path);
             e.printStackTrace();
         }
     }
@@ -269,8 +267,10 @@ public class model {
                  * y * vcC + c y * vcX + x + 1
                  */
 
-                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + ((y - 1) * vcX + x + offset) + "\n";
-                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + (y * vcX + x + 1 + offset) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " "
+                        + ((y - 1) * vcX + x + offset) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " "
+                        + (y * vcX + x + 1 + offset) + "\n";
 
                 triangleCount += 2;
             }

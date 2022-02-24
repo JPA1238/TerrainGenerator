@@ -7,12 +7,12 @@ public class terrainGenerator {
         /**
          * Individual tile testing
          */
-        heightmap belgiumHM = new heightmap(50, 4, 1, 1, 5);
+        heightmap belgiumHM = new heightmap(50, 4, 1, 1, 10);
 
         model belgium3D = new model(belgiumHM, 20, 20);
         belgium3D.settings.put("smoothing", "true");
-        // belgium3D.generate("data/STLs/belgium.stl", "STL");       
-        belgium3D.generate("data/OBJs/belgium2.obj", "OBJ");
+        belgium3D.generate("data/STLs/belgium.stl", "STL");       
+        // belgium3D.generate("data/OBJs/belgium2.obj", "OBJ");
 
         /**
          * Testing for individual tile orientation
