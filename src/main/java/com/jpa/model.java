@@ -7,16 +7,24 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.HashMap;
-
+ 
 // units in cm
 // settings stored as strings
 public class model {
     /*
+     * Constants
+     */
+
+    private static int REAL_LENGTH_PER_TILE = 100000;
+    private static int PIXELS_PER_IMAGE = 3601;
+    private static int REAL_MAX_HEIGHT = 8850;
+    private static int BRIGHTEST_PIXEL = 255;
+
+    /*
      * Standard settigns
      */
-    private float width, height, resolutionX, resolutionY, baseHeight;
+    private float width, height, baseHeight;
     private boolean smoothing;
     public HashMap<String, String> settings = new HashMap<String, String>();
 
@@ -30,11 +38,29 @@ public class model {
 
     private static int smoothingResolution = 7; // <-- r+1+r | ex: 5 --> 2+1+2 --> 2 neighbours on each side
 
+    // real world width/height
+    model(heightmap hm) {
+        int vertices_per_tile = PIXELS_PER_IMAGE / hm.getResolution();
+        width = REAL_LENGTH_PER_TILE / vertices_per_tile;
+        height = REAL_MAX_HEIGHT / BRIGHTEST_PIXEL;
+
+        System.out.println("width: " + width + "\theight: " + height);
+
+        this.settings.put("width", String.valueOf(width));
+        this.settings.put("height", String.valueOf(height));
+        this.settings.put("smoothing", "false");
+
+        this.settings.put("baseHeight", "2");
+
+        this.hm = hm;
+
+        reloadSettings();
+    }
+
+    // custom width/height
     model(heightmap hm, int width, int height) {
         this.settings.put("width", String.valueOf(width));
         this.settings.put("height", String.valueOf(height));
-        this.settings.put("resolutionX", String.valueOf(Math.floor(width / hm.getWidth())));
-        this.settings.put("resolutionY", String.valueOf(Math.floor(height / hm.getHeight())));
         this.settings.put("smoothing", "false");
 
         this.settings.put("baseHeight", "2");
@@ -45,6 +71,7 @@ public class model {
     }
 
     public void generate(String path, String fileType) {
+        System.out.println("--- starting generation ---\n");
         reloadSettings();
 
         switch (fileType) {
@@ -53,34 +80,7 @@ public class model {
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
                         if (smoothing) {
-                            float[][] heightValues = hm.getHeightValues(i, j);
-                            float[][] newHeightValues = heightValues;
-
-                            int radius = (smoothingResolution - 1) / 2;
-
-                            for (int x = radius; x < heightValues.length - radius; x++) {
-                                for (int y = radius; y < heightValues[x].length - radius; y++) {
-                                    float[][] neighbours = new float[smoothingResolution][smoothingResolution];
-                                    for (int sx = -radius; sx <= radius; sx++) {
-                                        for (int sy = -radius; sy <= radius; sy++) {
-                                            neighbours[sx + radius][sy + radius] = heightValues[x + sx][y + sy];
-                                        }
-                                    }
-
-                                    float[][] weights = new float[smoothingResolution][smoothingResolution];
-                                    for (int sx = 0; sx < smoothingResolution; sx++) {
-                                        for (int sy = 0; sy < smoothingResolution; sy++) {
-                                            weights[sx][sy] = (Math.abs(Math.abs(sx - radius) - radius) + radius)
-                                                    * (Math.abs(Math.abs(sy - radius) - radius) + radius);
-                                        }
-                                    }
-
-                                    newHeightValues[x][y] = flatten(neighbours, weights);
-                                }
-                            }
-                            heightValues = newHeightValues;
-
-                            generateChunk(heightValues, i, j, path);
+                            generateChunk(smoothen(hm.getHeightValues(i, j)), i, j, path);
                         } else {
                             generateChunk(hm.getHeightValues(i, j), i, j, path);
                         }
@@ -99,34 +99,7 @@ public class model {
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
                         if (smoothing) {
-                            float[][] heightValues = hm.getHeightValues(i, j);
-                            float[][] newHeightValues = heightValues;
-
-                            int radius = (smoothingResolution - 1) / 2;
-
-                            for (int x = radius; x < heightValues.length - radius; x++) {
-                                for (int y = radius; y < heightValues[x].length - radius; y++) {
-                                    float[][] neighbours = new float[smoothingResolution][smoothingResolution];
-                                    for (int sx = -radius; sx <= radius; sx++) {
-                                        for (int sy = -radius; sy <= radius; sy++) {
-                                            neighbours[sx + radius][sy + radius] = heightValues[x + sx][y + sy];
-                                        }
-                                    }
-
-                                    float[][] weights = new float[smoothingResolution][smoothingResolution];
-                                    for (int sx = 0; sx < smoothingResolution; sx++) {
-                                        for (int sy = 0; sy < smoothingResolution; sy++) {
-                                            weights[sx][sy] = (Math.abs(Math.abs(sx - radius) - radius) + radius)
-                                                    * (Math.abs(Math.abs(sy - radius) - radius) + radius);
-                                        }
-                                    }
-
-                                    newHeightValues[x][y] = flatten(neighbours, weights);
-                                }
-                            }
-                            heightValues = newHeightValues;
-
-                            individualVertexCount[i][j] = generateVertices(heightValues, i, j, path);
+                            individualVertexCount[i][j] = generateVertices(smoothen(hm.getHeightValues(i, j)), i, j, path);
                         } else {
                             individualVertexCount[i][j] = generateVertices(hm.getHeightValues(i, j), i, j, path);
                         }
@@ -153,8 +126,6 @@ public class model {
     private void reloadSettings() {
         width = Float.parseFloat(settings.get("width"));
         height = Float.parseFloat(settings.get("height"));
-        resolutionX = Float.parseFloat(settings.get("resolutionX"));
-        resolutionY = Float.parseFloat(settings.get("resolutionY"));
         baseHeight = Float.parseFloat(settings.get("baseHeight")); // TODO implement
         smoothing = Boolean.parseBoolean(settings.get("smoothing"));
     }
@@ -189,21 +160,10 @@ public class model {
                  * *-* LB - RB
                  */
 
-                vector LB = new vector(x + offsetX, y + offsetY, heightValues[heightValues[x].length - 1 - (y)][x]); // LB
-                vector RB = new vector(x + 1 + offsetX, y + offsetY,
-                        heightValues[heightValues[x].length - 1 - (y)][x + 1]); // RB
-                vector LT = new vector(x + offsetX, y + 1 + offsetY,
-                        heightValues[heightValues[x].length - 1 - (y + 1)][x]); // LT
-                vector RT = new vector(x + 1 + offsetX, y + 1 + offsetY,
-                        heightValues[heightValues[x].length - 1 - (y + 1)][x + 1]); // RT
-
-                /**
-                 * System.out.println("\n");
-                 * System.out.println("LB " + LB.x + " " + LB.y + " " + LB.z);
-                 * System.out.println("RB " + RB.x + " " + RB.y + " " + RB.z);
-                 * System.out.println("LT " + LT.x + " " + LT.y + " " + LT.z);
-                 * System.out.println("RT " + RT.x + " " + RT.y + " " + RT.z);
-                 */
+                vector LB = new vector((x + offsetX    ) * width, (y +     offsetY) * width, (heightValues[heightValues[x].length - 1 - (y    )][x    ]) * height); // LB
+                vector RB = new vector((x + 1 + offsetX) * width, (y +     offsetY) * width, (heightValues[heightValues[x].length - 1 - (y    )][x + 1]) * height); // RB
+                vector LT = new vector((x + offsetX    ) * width, (y + 1 + offsetY) * width, (heightValues[heightValues[x].length - 1 - (y + 1)][x    ]) * height); // LT
+                vector RT = new vector((x + 1 + offsetX) * width, (y + 1 + offsetY) * width, (heightValues[heightValues[x].length - 1 - (y + 1)][x + 1]) * height); // RT
 
                 triangle L = new triangle(LB, RB, LT);
                 triangle R = new triangle(LT, RT, RB);
@@ -246,7 +206,7 @@ public class model {
         for (int x = 0; x < heightValues.length; x++) {
             String vertices = "";
             for (int y = 0; y < heightValues[x].length; y++) {
-                vector v = new vector(x + offsetX, y + offsetY, heightValues[heightValues[x].length - 1 - (y)][x]);
+                vector v = new vector((x + offsetX) * width, (y + offsetY) * width, (heightValues[heightValues[x].length - 1 - (y)][x]) * height);
                 vertices += v.toString() + "\n";
                 vertexCount += 1;
             }
@@ -281,6 +241,34 @@ public class model {
     /*
      * Algoritms
      */
+
+    private float[][] smoothen(float[][] heightValues) {
+        float[][] newHeightValues = heightValues;
+
+        int radius = (smoothingResolution - 1) / 2;
+
+        for (int x = radius; x < heightValues.length - radius; x++) {
+            for (int y = radius; y < heightValues[x].length - radius; y++) {
+                float[][] neighbours = new float[smoothingResolution][smoothingResolution];
+                for (int sx = -radius; sx <= radius; sx++) {
+                    for (int sy = -radius; sy <= radius; sy++) {
+                        neighbours[sx + radius][sy + radius] = heightValues[x + sx][y + sy];
+                    }
+                }
+
+                float[][] weights = new float[smoothingResolution][smoothingResolution];
+                for (int sx = 0; sx < smoothingResolution; sx++) {
+                    for (int sy = 0; sy < smoothingResolution; sy++) {
+                        weights[sx][sy] = (Math.abs(Math.abs(sx - radius) - radius) + radius)
+                                * (Math.abs(Math.abs(sy - radius) - radius) + radius);
+                    }
+                }
+
+                newHeightValues[x][y] = flatten(neighbours, weights);
+            }
+        }
+        return newHeightValues;
+    }
 
     private float flatten(float[][] tiles, float[][] weight) {
         float avg = 0;

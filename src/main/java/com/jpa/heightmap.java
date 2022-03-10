@@ -172,4 +172,8 @@ public class heightmap {
     public int getHeight() {
         return dim.get("height");
     }
+
+    public int getResolution() {
+        return resolution;
+    }
 }
