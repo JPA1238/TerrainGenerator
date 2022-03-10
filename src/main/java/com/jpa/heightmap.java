@@ -85,7 +85,7 @@ public class heightmap {
 
     public float[][] getHeightValues(int x, int y) {
         int errors = 0;
-        System.out.println("Getting height values for " + map[x][y]);
+        // System.out.println("Getting height values for " + map[x][y]);
         float[][] height = null;
 
         BufferedImage image = getTIF(map[x][y]);
@@ -103,10 +103,10 @@ public class heightmap {
                 }
             }
         }
-        System.out.println("Number of height values : " + height.length * height[0].length);
+        // System.out.println("Number of height values : " + height.length * height[0].length);
 
         if (errors > 0) {
-            System.out.println("Number of errors : " + errors);
+            // System.out.println("Number of errors : " + errors);
         }
 
         return height;

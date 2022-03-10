@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+
+import me.tongfei.progressbar.ProgressBar;
  
 // units in cm
 // settings stored as strings
@@ -70,49 +72,70 @@ public class model {
         reloadSettings();
     }
 
-    public void generate(String path, String fileType) {
-        System.out.println("--- starting generation ---\n");
+    public void generate(String path, String name, String fileType) {
+        String fileName = path + name + "." + fileType.toLowerCase();
+        System.out.println("\n--- starting generation : " + name + " - " + fileType + " ---\n");
         reloadSettings();
 
         switch (fileType) {
             case "STL":
-                prepareSTL(path);
+                prepareSTL(name, fileName);
+
+                ProgressBar pb = new ProgressBar("Generating chunks", hm.getWidth() * hm.getHeight());
+                pb.start();
+
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
                         if (smoothing) {
-                            generateChunk(smoothen(hm.getHeightValues(i, j)), i, j, path);
+                            generateChunk(smoothen(hm.getHeightValues(i, j)), i, j, fileName);
                         } else {
-                            generateChunk(hm.getHeightValues(i, j), i, j, path);
+                            generateChunk(hm.getHeightValues(i, j), i, j, fileName);
                         }
+                        pb.step();
                     }
                 }
-                updateTriangleCount(path);
-                System.out.println("\nFacecount : " + triangleCount);
+
+                pb.stop();
+                
+                updateTriangleCount(fileName);
+                System.out.println("\nVertexcount : " + vertexCount);
+                System.out.println("Facecount : " + triangleCount);
                 break;
+            
             case "OBJ":
-                // TODO fix naming
-                String name = path.split("/")[path.split("/").length - 1];
-                write("o " + name + "\n", path, false);
+                write("o " + name + "\n", fileName, false);
+
+                ProgressBar PbVert = new ProgressBar("Generating vertices", hm.getWidth() * hm.getHeight());
+                PbVert.start();
 
                 int[][][] individualVertexCount = new int[hm.getWidth()][hm.getHeight()][2];
 
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
                         if (smoothing) {
-                            individualVertexCount[i][j] = generateVertices(smoothen(hm.getHeightValues(i, j)), i, j, path);
+                            individualVertexCount[i][j] = generateVertices(smoothen(hm.getHeightValues(i, j)), i, j, fileName);
                         } else {
-                            individualVertexCount[i][j] = generateVertices(hm.getHeightValues(i, j), i, j, path);
+                            individualVertexCount[i][j] = generateVertices(hm.getHeightValues(i, j), i, j, fileName);
                         }
+                        PbVert.step();
                     }
                 }
+                PbVert.stop();
+
+
+                ProgressBar PbFace = new ProgressBar("Generating faces", hm.getWidth() * hm.getHeight());
+                PbFace.start();
 
                 int offset = 0;
                 for (int i = 0; i < hm.getWidth(); i++) {
                     for (int j = 0; j < hm.getHeight(); j++) {
-                        generateFaces(individualVertexCount[i][j][0], individualVertexCount[i][j][1], offset, path);
+                        generateFaces(individualVertexCount[i][j][0], individualVertexCount[i][j][1], offset, fileName);
                         offset += individualVertexCount[i][j][0] * individualVertexCount[i][j][1];
+                        PbFace.step();
                     }
                 }
+
+                PbFace.stop();
 
                 System.out.println("\nVertexcount : " + vertexCount);
                 System.out.println("Facecount : " + triangleCount);
@@ -128,15 +151,18 @@ public class model {
         height = Float.parseFloat(settings.get("height"));
         baseHeight = Float.parseFloat(settings.get("baseHeight")); // TODO implement
         smoothing = Boolean.parseBoolean(settings.get("smoothing"));
+
+        vertexCount = 0;
+        triangleCount = 0;
     }
 
     /*
      * STL generation
      */
 
-    private void prepareSTL(String path) {
+    private void prepareSTL(String nameStr, String path) {
         byte[] header = new byte[80];
-        byte[] name = path.split("/")[path.split("/").length - 1].getBytes();
+        byte[] name = nameStr.getBytes();
 
         if (name.length <= 80) {
             header = insertByteArray(header, name, 0);
@@ -156,8 +182,8 @@ public class model {
             byte[] mesh = new byte[(heightValues[x].length - 1) * 2 * 50];
             for (int y = 0; y < heightValues[x].length - 1; y++) {
                 /**
-                 * *-* LT - RT
-                 * *-* LB - RB
+                 * LT - RT
+                 * LB - RB
                  */
 
                 vector LB = new vector((x + offsetX    ) * width, (y +     offsetY) * width, (heightValues[heightValues[x].length - 1 - (y    )][x    ]) * height); // LB
@@ -168,6 +194,7 @@ public class model {
                 triangle L = new triangle(LB, RB, LT);
                 triangle R = new triangle(LT, RT, RB);
 
+                vertexCount += 6; // 3 vertices per face // 2 faces
                 triangleCount += 2;
 
                 mesh = insertByteArray(mesh, L.toBytes(), 2 * 50 * y);
@@ -222,15 +249,12 @@ public class model {
             for (int y = 1; y < vcY; y++) {
 
                 /**
-                 * (y - 1) * vcX + x (y - 1) * vcX + x + 1
+                 * (y - 1) * vcX + x                (y - 1) * vcX + x + 1
                  * 
-                 * y * vcC + c y * vcX + x + 1
+                 * y * vcC + x                      y * vcX + x + 1
                  */
-
-                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " "
-                        + ((y - 1) * vcX + x + offset) + "\n";
-                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " "
-                        + (y * vcX + x + 1 + offset) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + ((y - 1) * vcX + x     + offset) + "\n";
+                faces += "f " + ((y - 1) * vcX + x + 1 + offset) + " " + (y * vcX + x + offset) + " " + ((y    ) * vcX + x + 1 + offset) + "\n";
 
                 triangleCount += 2;
             }

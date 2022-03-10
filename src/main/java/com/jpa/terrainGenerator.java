@@ -7,21 +7,21 @@ public class terrainGenerator {
         /**
          * Individual tile testing
          */
-        heightmap belgiumHM = new heightmap(50, 4, 1, 1, 1);
+        // heightmap belgiumHM = new heightmap(50, 4, 1, 1, 1);
 
-        model belgium3D = new model(belgiumHM);
-        belgium3D.settings.put("smoothing", "true");
-        // belgium3D.generate("data/STLs/belgium.stl", "STL");       
-        belgium3D.generate("data/OBJs/belgium2.obj", "OBJ");
+        // model belgium3D = new model(belgiumHM);
+        // belgium3D.settings.put("smoothing", "true");
+        // // belgium3D.generate("data/STLs/belgium.stl", "STL");       
+        // belgium3D.generate("data/OBJs/belgium2.obj", "OBJ");
 
         /**
          * Testing for individual tile orientation
          */
-        // heightmap everestHM = new heightmap(27, 86, 3, 3, 10);
+        heightmap everestHM = new heightmap(27, 86, 3, 3, 10);
 
-        // model everest3D = new model(everestHM);
-        // // everest3D.generate("data/STLs/everest.stl", "STL");
-        // everest3D.generate("data/OBJs/everestRealLength.obj", "OBJ");
+        model everest3D = new model(everestHM);
+        everest3D.generate("data/STLs/", "everest", "STL");
+        everest3D.generate("data/OBJs/", "everestRealLength", "OBJ");
 
         /**
          * Test for large surfaces and errors
@@ -38,11 +38,12 @@ public class terrainGenerator {
         // nile3DFinerRes.settings.put("smoothing", "true");
         // nile3DFinerRes.generate("data/OBJs/nileFinerRes.obj", "OBJ");
 
-        heightmap nileHMEvenFinerRes = new heightmap(31, 29, 8, 15, 25);
+        // heightmap nileHMEvenFinerRes = new heightmap(31, 29, 8, 15, 25);
 
-        model nile3DEvenFinerRes = new model(nileHMEvenFinerRes);
-        nile3DEvenFinerRes.settings.put("smoothing", "true");
-        nile3DEvenFinerRes.generate("data/OBJs/nileEvenFinerRes.obj", "OBJ");
+        // model nile3DEvenFinerRes = new model(nileHMEvenFinerRes);
+        // nile3DEvenFinerRes.settings.put("smoothing", "true");
+        // nile3DEvenFinerRes.generate("data/OBJs/nileEvenFinerRes.obj", "OBJ");
+        // nile3DEvenFinerRes.generate("data/STLs/nileEvenFinerRes.stl", "STL");
 
 
         /**
